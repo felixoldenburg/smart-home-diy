@@ -47,3 +47,7 @@ Quicker achievements, more motivation!
 
 ## Misc & Considerations
 - Leverage iOS Homekit as UI
+
+## Links
+[Setup Arduino IDE for Adafruit Feather Huzzah ESP8266](https://learn.adafruit.com/adafruit-feather-huzzah-esp8266/using-arduino-ide)
+[Getting started with the ESP8266 and DHT22 sensor](https://www.losant.com/blog/getting-started-with-the-esp8266-and-dht22-sensor)
