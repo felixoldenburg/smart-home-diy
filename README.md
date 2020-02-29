@@ -33,7 +33,20 @@ Well, I really only know little and have few experience with electronic componen
 using the convenience of a platform like Arduino and quickly be able to proto type something really makes all the difference.
 Quicker achievements, more motivation!
 
-### How to wire 
+### Setup of a Adafruit HUZZAH ESP8266 
+As I wanted to keep my Arduino Uno for experimentation and needed some small device, ideally with some remote functionality, I decided to give the Adafruit HUZZAH ESP8266 a try.
+The Huzzah is well supported by the Arduino IDE and comes with a Wifi chip on board. Looking back chosing a Wifi based chip wasn't the best choice for a battery based setup. Wifi has a significantly higher energy consumption than 433Mhz, Bluetooth or LoRa based solutions.
+Still I'll continue to use it for now and will work with usb powered setup and try some deep sleep setup where the Huzzah wakes up every n minutes to send/receive data and control commands from a Raspberry Pi.
+See the link section on how to setup the Huzzah with the Arduino IDE.
+To start working with json based http calls the [ArduinoJson library](https://arduinojson.org/) is necessary which can be installed with the library manager of Arduino IDE
+
+### Scheduled wake up
+In order to safe energy on letting the Huzzah idle forever the chip knows different kinds of sleep modes.
+For the temperature control it's sufficient to only wake up every n minutes. In my case the controller should send the current temperature data to a time series db and read the target temperature it's supposed to set.
+Head over to https://randomnerdtutorials.com/esp8266-deep-sleep-with-arduino-ide/ for some nice tutorial and overview about the different sleep modes and how to use them.
+In my case I have a `ESP.deepSleep(10e6);` (the interval param is in µ seconds) at the end of the setup() method to set a sleep timer for 10s. 10s is for testing the code. Later a couple of minutes should suffice. This depends on how fine granular the desired tmp data should be recorded and how often the tmp should be adjusted.
+Normally for the controller to be restarted we'd need to pull the RST pin to ground (RST is always HIGH).
+The timer will send a LOW signal to GPIO16. So if this pin is wired with the RST pin, the timer reset the controller after the interval and the controller will execute the setup() method again.
 
 ## Concept
 * Controlling lights and temperature in flat
