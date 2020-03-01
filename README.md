@@ -48,6 +48,10 @@ In my case I have a `ESP.deepSleep(10e6);` (the interval param is in µ seconds)
 Normally for the controller to be restarted we'd need to pull the RST pin to ground (RST is always HIGH).
 The timer will send a LOW signal to GPIO16. So if this pin is wired with the RST pin, the timer reset the controller after the interval and the controller will execute the setup() method again.
 
+### Arduino IDE setup on OSX
+To get the Arduino able to run on OSX the virtual COM port drivers are necessary for USB to serial communication.
+See the link below to dowload. Install and reboot
+
 ## Concept
 * Controlling lights and temperature in flat
 * Low cost and low energy
@@ -63,7 +67,9 @@ The timer will send a LOW signal to GPIO16. So if this pin is wired with the RST
 
 ## Links
 [Setup Arduino IDE for Adafruit Feather Huzzah ESP8266](https://learn.adafruit.com/adafruit-feather-huzzah-esp8266/using-arduino-ide)
+
 [Getting started with the ESP8266 and DHT22 sensor](https://www.losant.com/blog/getting-started-with-the-esp8266-and-dht22-sensor)
+
 [Install Virtual COM Port driver for Arduino IDE for OSX](https://www.ftdichip.com/Drivers/VCP.htm)
 
 ## Paths
