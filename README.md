@@ -11,7 +11,24 @@ As many others I like to learn on the fly while working towards something new to
 It all started with ...
 "Hey, I got this cheap set of simple, but digital heater thermostats. I wonder if these could be modded to be controlled remotely."
 
-## Steps
+## Next Steps
+
+Short Form | Meaning
+---|---
+HT | Heater Thermostat
+BrainPi | RaspberryPi acting with gateway software
+
+* RaspberryPi: Checkout and use github repo for webserver instead of local file
+* Add rotary_encoder_pulsing functionality to *huzzah_buttons_rotaryencoder*
+* Merge *huzzah_buttons_rotaryencoder* with **wifi_controller**
+* Test sending pulses via buttons to HT
+
+### Error Handling
+* Indicate with red lamp if there was any error (later health check functionality)
+* Remember errors and send to BrainPi which stores error messages in text file
+  * Later send BrainPi logs from webserver and HT errors to ES on Scaleway instance
+
+## Working Log
 ### Analysis and preparation of heater thermostat
 1. Analyse heater thermostat -> It's using a rotary encoder, with 3 pins
 2. Disassembling and re-assembling didn't damage the device! Phew..
@@ -48,9 +65,10 @@ In my case I have a `ESP.deepSleep(10e6);` (the interval param is in µ seconds)
 Normally for the controller to be restarted we'd need to pull the RST pin to ground (RST is always HIGH).
 The timer will send a LOW signal to GPIO16. So if this pin is wired with the RST pin, the timer reset the controller after the interval and the controller will execute the setup() method again.
 
-### Arduino IDE setup on OSX
-To get the Arduino able to run on OSX the virtual COM port drivers are necessary for USB to serial communication.
+### Setup OSX for Arduino and Feather Huzzah development in Arduino IDE
+- To get the Arduino able to run on OSX the virtual COM port drivers are necessary for USB to serial communication.
 See the link below to dowload. Install and reboot
+- For the Huzzah to be accessible via USB Silabs usb-to-uart-bridge-vcp-drivers are necessary
 
 ## Concept
 * Controlling lights and temperature in flat
@@ -71,6 +89,8 @@ See the link below to dowload. Install and reboot
 [Getting started with the ESP8266 and DHT22 sensor](https://www.losant.com/blog/getting-started-with-the-esp8266-and-dht22-sensor)
 
 [Install Virtual COM Port driver for Arduino IDE for OSX](https://www.ftdichip.com/Drivers/VCP.htm)
+
+[usb-to-uart-bridge-vcp-drivers](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
 
 ## Paths
 /Applications/Arduino.app/Contents/Java/hardware/tools/avr
