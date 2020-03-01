@@ -3,6 +3,22 @@
 Tracking the journey of creating custom build, µController based Smart Home components.
 Wiring them up to automatise repetitive scenarios for light and temperature.
 
+- [Motivation](#motivation)
+- [Next Steps](#next-steps)
+  * [Error Handling](#error-handling)
+- [Working Log](#working-log)
+  * [Analysis and preparation of heater thermostat](#analysis-and-preparation-of-heater-thermostat)
+  * [How to simulate rotary encoder signals with an Arduino?](#how-to-simulate-rotary-encoder-signals-with-an-arduino)
+  * [Hook up the thermostat and set temperature](#hook-up-the-thermostat-and-set-temperature)
+  * [Setup of a Adafruit HUZZAH ESP8266](#setup-of-a-adafruit-huzzah-esp8266)
+  * [Scheduled wake up](#scheduled-wake-up)
+  * [Setup OSX for Arduino and Feather Huzzah development in Arduino IDE](#setup-osx-for-arduino-and-feather-huzzah-development-in-arduino-ide)
+- [Concept](#concept)
+- [Characteristics](#characteristics)
+- [Misc & Considerations](#misc---considerations)
+- [Links](#links)
+- [Paths](#paths)
+
 ## Motivation
 Just picking up an old box with electronic components got me started refreshing knowledge about transistors, µControllers, etc.
 
@@ -34,7 +50,7 @@ BrainPi | RaspberryPi acting with gateway software
 2. Disassembling and re-assembling didn't damage the device! Phew..
 3. Desolder rotary encoder and solder wires to the board AND DON'T damage these incredibly tiny SMD parts
 
-### How to simulate rotary encoder signals with an Arduino?
+### How to simulate rotary encoder signals with an Arduino
 4. Read into topic of rotary encoder signals
 5. Get inspirations, read about related material and instructions
 6. Found code snippet that can simulate rotary encoder impulses via PWM
