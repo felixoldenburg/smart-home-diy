@@ -36,6 +36,14 @@ const char* WIFI_PASS = "--";
 DHT dht(DHTPIN, DHTTYPE);
 WiFiClientSecure wifiClient;
 
+// F() puts string into flash not RAM
+void handleError(int errorCode, String message) {
+  Serial.print(F("Error("));
+  Serial.print(errorCode);
+  Serial.print("): ");
+  Serial.println(message);
+}
+
 void connect() {
 
   // Connect to Wifi.
