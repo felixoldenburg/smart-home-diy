@@ -11,6 +11,12 @@
 #define ROT1 12
 #define ROT2 14
 
+/**
+ * ToDo
+ * - Replace String with char[] 
+ *  
+ * */
+
 // 2 x Buttons: PIN, State, debounce, delay
 int buttonState;
 int buttonState2;
@@ -112,6 +118,7 @@ float getHeatIndex() {
   return dht.computeHeatIndex(t, h, false);
 }
 
+// TODO Change to to int temp, the precision isn't necessary
 void set_new_temp(float temp) {
   float new_temp = (temp * 2) - 10;
   pulse("-", 60);
