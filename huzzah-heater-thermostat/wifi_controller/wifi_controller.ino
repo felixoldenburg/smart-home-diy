@@ -3,10 +3,27 @@
 #include "DHT.h"
 #include <ArduinoJson.h>
 
+// Temp. sensor
 #define DHTPIN 4
 #define DHTTYPE DHT22
 
-// WiFi credentials.
+// Rotary Encoder
+#define ROT1 12
+#define ROT2 14
+
+// 2 x Buttons: PIN, State, debounce, delay
+int buttonState;
+int buttonState2;
+int BUTTON = 15;
+int BUTTON2 = 13;
+int lastButtonState = LOW;
+int lastButtonState2 = LOW;
+unsigned long lastDebounceTime = 0;
+unsigned long lastDebounceTime2 = 0;
+unsigned long debounceDelay = 30;
+
+
+// WiFi credentials
 const char* WIFI_SSID = "--";
 const char* WIFI_PASS = "--";
 
@@ -95,6 +112,77 @@ float getHeatIndex() {
   return dht.computeHeatIndex(t, h, false);
 }
 
+void set_new_temp(float temp) {
+  float new_temp = (temp * 2) - 10;
+  pulse("-", 60);
+  pulse("+", new_temp);
+}
+
+void pulse(char dir[], float qty_pulses) {
+  bool pinStatus = digitalRead(ROT1);
+  for (int i = 0; i < qty_pulses; i++) {
+    if (pinStatus == LOW) {
+      pinStatus = HIGH;
+    } else {
+      pinStatus = LOW;
+    }
+    if (dir == "-") {
+      digitalWrite(ROT1, pinStatus);
+      delay(10);
+      digitalWrite(ROT2, pinStatus);
+      delay(10);
+    } else if (dir == "+") {
+      digitalWrite(ROT2, pinStatus);
+      delay(10);
+      digitalWrite(ROT1, pinStatus);
+      delay(10);
+    }
+  }
+}
+
+void buttonUp() {
+  Serial.println(F("pulse +1"));
+  //digitalWrite(LED, HIGH);
+  //delay(100);
+  //digitalWrite(LED, LOW);
+  //delay(100);
+  pulse("+", 2);
+}
+
+void buttonDown() {
+  Serial.println(F("pulse -1"));
+  //digitalWrite(LED, HIGH);
+  //delay(100);
+  //digitalWrite(LED, LOW);
+  //delay(100);
+  pulse("-", 2);
+}
+
+void processButton(int buttonId, int* currentState, int* lastState, unsigned long* lastDebounce, void (*action)()) {
+   int reading = digitalRead(buttonId);
+
+  if (reading != *lastState) {
+    // reset the debouncing timer
+    *lastDebounce = millis();
+  }
+
+  if ((millis() - *lastDebounce) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != *currentState) {
+      *currentState = reading;
+
+      // only toggle the LED if the new button state is HIGH
+      if (*currentState == HIGH) {
+        action();
+      } 
+    }
+  }
+  *lastState = reading;
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(2000);
@@ -107,6 +195,17 @@ void setup() {
   Serial.println(F("Running Deep Sleep Firmware!"));
   Serial.println(F("-------------------------------------"));
 
+  // Setup button pins
+  pinMode(BUTTON, INPUT);
+  pinMode(BUTTON2, INPUT);
+
+  // Setup rotary encoder pins
+  pinMode(ROT1, OUTPUT);
+  pinMode(ROT2, OUTPUT);
+  digitalWrite(ROT1, LOW);
+  digitalWrite(ROT2, LOW);
+
+/*
   connect();
 
   float heat = getHeatIndex();
@@ -115,21 +214,18 @@ void setup() {
 
   reportTemperature(heat);
 
-/*
-  // Prepare JSON document
-  DynamicJsonDocument doc(2048);
-  doc["hello"] = "world";
-
-  // Serialize JSON document
-  String json;
-  serializeJson(doc, json);
-  Serial.print(F("Json:"));
-  Serial.println(json);  
-*/
 
   Serial.println("Going into deep sleep for 10 seconds");
   ESP.deepSleep(10e6); // 10e6 is 20 microseconds
+  */
 }
 
 void loop() {
+
+  processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
+  processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
+  //digitalWrite(LED, HIGH);
+  delay(50);
+  Serial.println(F("looping :B)"));
+  
 }
