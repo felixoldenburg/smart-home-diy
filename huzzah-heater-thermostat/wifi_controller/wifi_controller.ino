@@ -20,8 +20,8 @@
 // 2 x Buttons: PIN, State, debounce, delay
 int buttonState;
 int buttonState2;
-int BUTTON = 15;
-int BUTTON2 = 13;
+int BUTTON = 13;
+int BUTTON2 = 15;
 int lastButtonState = LOW;
 int lastButtonState2 = LOW;
 unsigned long lastDebounceTime = 0;
