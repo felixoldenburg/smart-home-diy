@@ -2,6 +2,7 @@
 #include <ESP8266HTTPClient.h>
 #include "DHT.h"
 #include <ArduinoJson.h>
+#include "LocalConstants.h"
 
 // Temp. sensor
 #define DHTPIN 4
@@ -11,10 +12,13 @@
 #define ROT1 12
 #define ROT2 14
 
+#define ERR_GET_TEMP 1
+
 /**
  * ToDo
  * - Replace String with char[] 
- *  
+ * - What to do in case of error?
+ * 
  * */
 
 // 2 x Buttons: PIN, State, debounce, delay
@@ -29,10 +33,6 @@ unsigned long lastDebounceTime2 = 0;
 unsigned long debounceDelay = 30;
 
 
-// WiFi credentials
-const char* WIFI_SSID = "--";
-const char* WIFI_PASS = "--";
-
 DHT dht(DHTPIN, DHTTYPE);
 WiFiClientSecure wifiClient;
 
@@ -40,7 +40,7 @@ WiFiClientSecure wifiClient;
 void handleError(int errorCode, String message) {
   Serial.print(F("Error("));
   Serial.print(errorCode);
-  Serial.print("): ");
+  Serial.print(F("): "));
   Serial.println(message);
 }
 
@@ -91,10 +91,6 @@ void reportTemperature(float tmp) {
 
   HTTPClient http;
 
-/*
-  http.begin("http://51.15.123.89:8086/write?db=mydb");
-  http.GET();
-*/
   // Send request
   String payload="tmp,id=1,name=living_room value=";
   payload += String(tmp, 2);
@@ -108,7 +104,21 @@ void reportTemperature(float tmp) {
 
   // Disconnect
   http.end();
+}
+
+int getTemperature() {
   
+  HTTPClient http;
+
+  http.begin("http://192.168.178.27:5000/tmp");
+  int returnCode = http.GET();
+
+  if (returnCode != 200) {
+    handleError(ERR_GET_TEMP, "Couldnt read temperature");
+    return -1;
+  }
+
+  return http.getString().toInt();
 }
 
 float getHeatIndex() {
@@ -220,9 +230,15 @@ void setup() {
   digitalWrite(ROT1, LOW);
   digitalWrite(ROT2, LOW);
 
-/*
+
   connect();
 
+  int tmp = getTemperature();
+
+  Serial.print(F("Getting temp from remote:"));
+  Serial.println(tmp);
+  
+/*
   float heat = getHeatIndex();
   Serial.print(F("Heat index: "));
   Serial.println(heat);
@@ -241,6 +257,6 @@ void loop() {
   processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
   //digitalWrite(LED, HIGH);
   delay(50);
-  Serial.println(F("looping :B)"));
+  //Serial.println(F("looping :B)"));
   
 }
