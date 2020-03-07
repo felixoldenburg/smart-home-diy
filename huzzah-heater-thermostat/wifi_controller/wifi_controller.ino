@@ -153,9 +153,13 @@ float getHeatIndex() {
 
 // TODO Change to to int temp, the precision isn't necessary
 void set_new_temp(float temp) {
-  float new_temp = (temp * 2) - 10;
-  pulse("-", 60);
-  pulse("+", new_temp);
+  //float new_temp = (temp * 2) - 10;
+  float new_temp = (temp * 4) - 18;
+  pulse("+", 100);
+  delay(100);
+  pulse("-", 2); // Change direction
+  delay(10);
+  pulse("-", new_temp);
 }
 
 void pulse(char dir[], float qty_pulses) {
@@ -168,14 +172,14 @@ void pulse(char dir[], float qty_pulses) {
     }
     if (dir == "-") {
       digitalWrite(ROT1, pinStatus);
-      delay(10);
+      delay(20);
       digitalWrite(ROT2, pinStatus);
-      delay(10);
+      delay(20);
     } else if (dir == "+") {
       digitalWrite(ROT2, pinStatus);
-      delay(10);
+      delay(20);
       digitalWrite(ROT1, pinStatus);
-      delay(10);
+      delay(20);
     }
   }
 }
