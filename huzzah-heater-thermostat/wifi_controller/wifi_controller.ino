@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include "DHT.h"
 #include <ArduinoJson.h>
+#include "DHT.h" // Temperature sensor library
 #include "LocalConstants.h"
 
 extern "C" {
@@ -18,22 +18,25 @@ extern "C" {
 #define ROT2 14
 
 #define ERR_GET_TEMP 1
+#define ERR_READING_DHT 2
+#define ERR_WIFI_FAILED 3
+#define ERR_WIFI_BAD_CREDS 4
 
 /**
  * ToDo
- * x Fix: Reset pin shouldn't be connected manually -> How to enable reset properly?
- * - Persist number of restarts (This can help as an indicator how long/stable the device runs)
- * - Replace String with char[] 
- * - What to do in case of error?
- * x Replace Go button with a switch
- * - Only set set temp if value has changed
- * -- Needs to persist last known value in RTC memory
+ * - Modularise -> SOC
  * - Report temperature
+ * - Persist and report number of restarts (This can help as an indicator how long/stable the device runs -> Report)
+ * - What to do in case of error? ERROR could be logged to ES, exceptions happening because of no Wifi connection (FATAL)
  * - Report humidity
- * - Modularise/SOC
+ * - Offline mode: Device should still be able to work if the gateway is not reachable
+ * 
+ * x Replace Go button with a switch
+ * x Only set set temp if value has changed via RTC memory
+ * x Fix: Reset pin shouldn't be connected manually -> How to enable reset properly?
  * 
  * Other features:
- * - Replace switch again with small button and self build electronic switch (toggle)
+ * - Replace switch button with toggle
  * 
  * */
 
@@ -41,7 +44,7 @@ extern "C" {
 // When finished the init button sets the controller into "read temperature from remote and set it" mode
 #define INIT_LED 0
 
-#define RTC_MAGIC 12345678
+#define RTC_INIT_CODE 12345678
 typedef struct {
   uint32_t magic;
   uint8_t  lastKnownTemp;
@@ -79,11 +82,8 @@ void handleError(int errorCode, String message) {
   Serial.println(message);
 }
 
-void connect() {
+void connectWifi() {
 
-  // Connect to Wifi.
-  Serial.println();
-  Serial.println();
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
 
@@ -100,28 +100,27 @@ void connect() {
   while (WiFi.status() != WL_CONNECTED) {
     // Check to see if
     if (WiFi.status() == WL_CONNECT_FAILED) {
-      Serial.println("Failed to connect to WiFi. Please verify credentials: ");
+      Serial.println(F("Wifi: Bad credentials"));
+      handleError(ERR_WIFI_BAD_CREDS, "Bad Wifi credentials");
       delay(10000);
     }
 
     delay(500);
-    Serial.println("...");
+    Serial.print("...");
     // Only try for 5 seconds.
     if (millis() - wifiConnectStart > 15000) {
-      Serial.println("Failed to connect to WiFi");
+      handleError(ERR_WIFI_FAILED, "Wifi failed to connect");
       return;
     }
   }
-
   Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.print(F("WiFi connected, IP="));
   Serial.println(WiFi.localIP());
-  Serial.println();
-  Serial.println("Connected!");
-  Serial.println("This device is now ready for use!");
 }
 
+/**
+ * Requires wifi connection
+ **/
 void reportTemperature(float tmp) {
 
   HTTPClient http;
@@ -129,6 +128,7 @@ void reportTemperature(float tmp) {
   // Send request
   String payload="tmp,id=1,name=living_room value=";
   payload += String(tmp, 2);
+  // TODO Put ip+port and DB into localconstants.h
   http.begin("http://51.15.123.89:8086/write?db=mydb");
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
   http.POST(payload);
@@ -141,13 +141,13 @@ void reportTemperature(float tmp) {
   http.end();
 }
 
-int getTemperature() {
+int retrieveTemperature() {
   
   HTTPClient http;
 
   char url[50];
   sprintf(url, "http://%s:5000/tmp", RASPBERRYPI_ADDRESS);
-  Serial.print(F("Getting temperature from: "));
+  Serial.print(F("Retrieving temperature from "));
   Serial.println(url);
   
   http.begin(url);
@@ -161,6 +161,9 @@ int getTemperature() {
   return http.getString().toInt();
 }
 
+/**
+ * Reads sensore and calculates the heat index
+ */
 float getHeatIndex() {
   dht.begin();
 
@@ -170,6 +173,7 @@ float getHeatIndex() {
 
   if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println(F("Failed to read from DHT sensor!"));
+    handleError(ERR_READING_DHT, "Couldnt read from temperature sensor");
     return 0;
   }
 
@@ -178,15 +182,17 @@ float getHeatIndex() {
 
 // TODO Change to to int temp, the precision isn't necessary
 void set_new_temp(float temp) {
-  //float new_temp = (temp * 2) - 10;
+  // TODO Test with (temp * 4) - 20 and extract to impulseFunction
+  // Because that would mean 2xImpuls == half a degree, so 1 degree are 4 impulses. Minus 5 (20 impulses) degree for the minimum temp of the HT
   float new_temp = (temp * 4) - 18;
+
+  // TODO + and - are mixed up
   pulse("+", 100);
-  //delay(100);
-  //pulse("-", 2); // Change direction
   delay(10);
   pulse("-", new_temp);
 }
 
+// TODO Use better approach than a char for up vs down
 void pulse(char dir[], float qty_pulses) {
   bool pinStatus = digitalRead(ROT1);
   for (int i = 0; i < qty_pulses; i++) {
@@ -209,19 +215,8 @@ void pulse(char dir[], float qty_pulses) {
   }
 }
 
-void buttonGo() {
-  Serial.println(F("Go button pressed"));
-  digitalWrite(INIT_LED, HIGH);
-
-  readAndSetTemp();
-}
-
 void buttonUp() {
   Serial.println(F("pulse +1"));
-  //digitalWrite(LED, HIGH);
-  //delay(100);
-  //digitalWrite(LED, LOW);
-  //delay(100);
   pulse("+", 2);
 }
 
@@ -255,10 +250,13 @@ void processButton(int buttonId, int* currentState, int* lastState, unsigned lon
   *lastState = reading;
 }
 
+/**
+ * Retrieves the target temperature from the gateway.
+ * If the target temperature has changed since last time send the temperature to the HT
+ */
 void readAndSetTemp() {
-  connect();
-
-  int newTemperature = getTemperature();
+  
+  int newTemperature = retrieveTemperature();
 
   if (rtcStore.lastKnownTemp == newTemperature) {
     Serial.println(F("Target temperature hasn't changed. Skipping."));
@@ -276,28 +274,17 @@ void readAndSetTemp() {
       Serial.println("rtc mem write is fail during temp persist");
     }
   }
-  
-/*
-  float heat = getHeatIndex();
-  Serial.print(F("Heat index: "));
-  Serial.println(heat);
-
-  reportTemperature(heat);
-*/
-
-
 }
 
 void setup() {
+  // Setup Serial
   Serial.begin(9600);
   Serial.setTimeout(2000);
-
-  // Wait for serial to initialize.
   while (!Serial) { }
 
   Serial.println(F("Device Started"));
   Serial.println(F("-------------------------------------"));
-  Serial.println(F("Running Deep Sleep Firmware!"));
+  Serial.println(F("Running heater thermostat firmware"));
   Serial.println(F("-------------------------------------"));
 
   pinMode(INIT_LED, OUTPUT);
@@ -313,10 +300,11 @@ void setup() {
   digitalWrite(ROT1, LOW);
   digitalWrite(ROT2, LOW);
 
+  // Init rtc store
   system_rtc_mem_read(100, &rtcStore, sizeof(rtcStore));
-  if (rtcStore.magic != RTC_MAGIC) {
+  if (rtcStore.magic != RTC_INIT_CODE) {
     Serial.println("Initialising RTC memory");
-    rtcStore.magic = RTC_MAGIC;
+    rtcStore.magic = RTC_INIT_CODE;
     rtcStore.lastKnownTemp = 0;
 
     if (system_rtc_mem_write(100, &rtcStore, sizeof(rtcStore))) {
@@ -328,28 +316,40 @@ void setup() {
 }
 
 void loop() {
-  //processButton(BUTTON_GO, &buttonStateGo, &lastButtonStateGo, &lastDebounceTimeGo, buttonGo);
-  int initPhase = digitalRead(BUTTON_GO);
-  if (initPhase == HIGH) {
+
+  int DEFAULT_MODE = digitalRead(BUTTON_GO);
+  if (DEFAULT_MODE == HIGH) { // Standard (ON)
     
-    Serial.println(F("Auto mode"));
+    Serial.println(F("Entering default mode"));
     digitalWrite(INIT_LED, HIGH);
+
+    connectWifi();
+
+/* Report heat to InfluxDB
+  float heat = getHeatIndex();
+  Serial.print(F("Heat index: "));
+  Serial.println(heat);
+
+  reportTemperature(heat);
+*/
+    
     readAndSetTemp();
 
-    Serial.println("Going into deep sleep for 10 seconds");
+    Serial.println(F("Going into deep sleep for 10 seconds"));
+    Serial.println(F("ZZZZzzzzzzz...."));
+    Serial.println("");
+    Serial.println("");
+    // TODO Move magic number
     ESP.deepSleep(10e6); // 10e6 is 20 microseconds
     
   } else { // OFF -> Manual mode to setup HT
     
-    Serial.println(F("Manual mode"));
-    digitalWrite(INIT_LED, LOW);
+    Serial.println(F("Init mode (HT can no be controlled manually"));
+    digitalWrite(INIT_LED, LOW); // Indicate through init LED
+
     processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
     processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
   }
 
-  
-  //digitalWrite(LED, HIGH);
   delay(50);
-  //Serial.println(F("looping :B)"));
-  
 }
