@@ -282,10 +282,20 @@ void setup() {
 }
 
 void loop() {
-  processButton(BUTTON_GO, &buttonStateGo, &lastButtonStateGo, &lastDebounceTimeGo, buttonGo);
+  //processButton(BUTTON_GO, &buttonStateGo, &lastButtonStateGo, &lastDebounceTimeGo, buttonGo);
+  int initPhase = digitalRead(BUTTON_GO);
+  if (initPhase == HIGH) {
+    Serial.println(F("Auto mode"));
+    digitalWrite(INIT_LED, HIGH);
+    readAndSetTemp();
+  } else { // OFF -> Manual mode to setup HT
+    Serial.println(F("Manual mode"));
+    digitalWrite(INIT_LED, LOW);
+    processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
+    processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
+  }
 
-  processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
-  processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
+  
   //digitalWrite(LED, HIGH);
   delay(50);
   //Serial.println(F("looping :B)"));
