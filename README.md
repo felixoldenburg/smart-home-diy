@@ -20,6 +20,13 @@ Wiring them up to automatise repetitive scenarios for light and temperature.
 - [Paths](#paths)
 
 ## Motivation
+Custom tailored smart home components with a focus on learning electronics and smart home concepts.
+* Control lights and heating
+* Safe money
+* Automatise repetitve day to day tasks
+* Avoid third party cloud provider and limit/avoid internet exposure
+* Reuse old/unused components
+
 Just picking up an old box with electronic components got me started refreshing knowledge about transistors, µControllers, etc.
 
 As many others I like to learn on the fly while working towards something new to learn or build. Instead of only digging into books and articles without the practical part.
