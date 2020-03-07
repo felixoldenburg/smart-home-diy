@@ -16,9 +16,19 @@
 
 /**
  * ToDo
+ * x Fix: Reset pin shouldn't be connected manually -> How to enable reset properly?
+ * - Persist number of restarts (This can help as an indicator how long/stable the device runs)
  * - Replace String with char[] 
  * - What to do in case of error?
- * - Replace Go button with a switch 
+ * x Replace Go button with a switch
+ * - Only set set temp if value has changed
+ * -- Needs to persist last known value in RTC memory
+ * - Report temperature
+ * - Report humidity
+ * - Modularise/SOC
+ * 
+ * Other features:
+ * - Replace switch again with small button and self build electronic switch (toggle)
  * 
  * */
 
