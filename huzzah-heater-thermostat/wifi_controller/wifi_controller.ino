@@ -18,8 +18,18 @@
  * ToDo
  * - Replace String with char[] 
  * - What to do in case of error?
+ * - Replace Go button with a switch 
  * 
  * */
+
+// Init button: After startup the up/down buttons can be used to setup the HT
+// When finished the init button sets the controller into "read temperature from remote and set it" mode
+#define INIT_LED 0
+
+int buttonStateGo;
+int BUTTON_GO = 5;
+int lastButtonStateGo = LOW;
+unsigned long lastDebounceTimeGo = 0;
 
 // 2 x Buttons: PIN, State, debounce, delay
 int buttonState;
@@ -110,7 +120,12 @@ int getTemperature() {
   
   HTTPClient http;
 
-  http.begin("http://192.168.178.27:5000/tmp");
+  char url[50];
+  sprintf(url, "http://%s:5000/tmp", RASPBERRYPI_ADDRESS);
+  Serial.print(F("Getting temperature from: "));
+  Serial.println(url);
+  
+  http.begin(url);
   int returnCode = http.GET();
 
   if (returnCode != 200) {
@@ -165,6 +180,17 @@ void pulse(char dir[], float qty_pulses) {
   }
 }
 
+void buttonGo() {
+  Serial.println(F("Go button pressed"));
+  digitalWrite(INIT_LED, HIGH);
+
+  readAndSetTemp();
+  //delay(100);
+  //digitalWrite(LED, LOW);
+  //delay(100);
+  //pulse("+", 2);
+}
+
 void buttonUp() {
   Serial.println(F("pulse +1"));
   //digitalWrite(LED, HIGH);
@@ -208,6 +234,27 @@ void processButton(int buttonId, int* currentState, int* lastState, unsigned lon
   *lastState = reading;
 }
 
+void readAndSetTemp() {
+  connect();
+
+  int tmp = getTemperature();
+  Serial.print(F("Setting temperature to: "));
+  Serial.println(tmp);
+
+  set_new_temp((float)tmp);
+  
+/*
+  float heat = getHeatIndex();
+  Serial.print(F("Heat index: "));
+  Serial.println(heat);
+
+  reportTemperature(heat);
+*/
+
+  Serial.println("Going into deep sleep for 10 seconds");
+  ESP.deepSleep(10e6); // 10e6 is 20 microseconds
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(2000);
@@ -220,6 +267,9 @@ void setup() {
   Serial.println(F("Running Deep Sleep Firmware!"));
   Serial.println(F("-------------------------------------"));
 
+  pinMode(INIT_LED, OUTPUT);
+  digitalWrite(INIT_LED, LOW);
+
   // Setup button pins
   pinMode(BUTTON, INPUT);
   pinMode(BUTTON2, INPUT);
@@ -229,29 +279,10 @@ void setup() {
   pinMode(ROT2, OUTPUT);
   digitalWrite(ROT1, LOW);
   digitalWrite(ROT2, LOW);
-
-
-  connect();
-
-  int tmp = getTemperature();
-
-  Serial.print(F("Getting temp from remote:"));
-  Serial.println(tmp);
-  
-/*
-  float heat = getHeatIndex();
-  Serial.print(F("Heat index: "));
-  Serial.println(heat);
-
-  reportTemperature(heat);
-
-
-  Serial.println("Going into deep sleep for 10 seconds");
-  ESP.deepSleep(10e6); // 10e6 is 20 microseconds
-  */
 }
 
 void loop() {
+  processButton(BUTTON_GO, &buttonStateGo, &lastButtonStateGo, &lastDebounceTimeGo, buttonGo);
 
   processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
   processButton(BUTTON2, &buttonState2, &lastButtonState2, &lastDebounceTime2, buttonDown);
