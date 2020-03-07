@@ -34,22 +34,23 @@ As many others I like to learn on the fly while working towards something new to
 It all started with ...  
 "Hey, I got this cheap set of simple, but digital heater thermostats. I wonder if these could be modded to be controlled remotely."
 
-## Next Steps
-
+## Glossary
 Short Form | Meaning
 ---|---
 HT | Heater Thermostat
 BrainPi | RaspberryPi acting as gateway software
 ES | ElasticSearch
 
-1. Reporting v1
-1.1 BrainPi New endpoint: POST /heaterthermostat/<id>?temp=<value>&humidity=<value>
-1.2 Refactor: BrainPi should report temperature instead of HT
-1.3 Add basic auth to InfluxDB connection
-1.4 Write outside temperature to InfluxDB from third party source (look for public API)
-1.4.1 Research public and free API to get temperature for city/region
-1.4.2 Python script as cronjob to write the outside temperature to InfluxDB 
-1.5 Grafana Dashboard: Add humidity and outside temperature
+## Next Steps
+
+#### Reporting v1
+1. BrainPi New endpoint: POST /heaterthermostat/<id>?temp=<value>&humidity=<value>
+2. Refactor: BrainPi should report temperature instead of HT
+3. Add basic auth to InfluxDB connection
+4. Write outside temperature to InfluxDB from third party source (look for public API)
+   1. Research public and free API to get temperature for city/region
+   2. Python script as cronjob to write the outside temperature to InfluxDB 
+5. Grafana Dashboard: Add humidity and outside temperature
 
 ##### Monitoring
 ###### Health checks
