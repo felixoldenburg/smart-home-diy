@@ -4,6 +4,11 @@
 #include <ArduinoJson.h>
 #include "LocalConstants.h"
 
+extern "C" {
+  // Import functions for rtc memory read/write
+  #include "user_interface.h"
+}
+
 // Temp. sensor
 #define DHTPIN 4
 #define DHTTYPE DHT22
@@ -36,6 +41,17 @@
 // When finished the init button sets the controller into "read temperature from remote and set it" mode
 #define INIT_LED 0
 
+#define RTC_MAGIC 12345678
+typedef struct {
+  uint32_t magic;
+  uint8_t  lastKnownTemp;
+  //uint8_t  wlanConnectFailCnt;
+  //float    tempAccu;
+  //float    humiAccu;
+} RTCSTORE __attribute__((aligned(4)));
+
+RTCSTORE rtcStore;
+
 int buttonStateGo;
 int BUTTON_GO = 5;
 int lastButtonStateGo = LOW;
@@ -51,7 +67,6 @@ int lastButtonState2 = LOW;
 unsigned long lastDebounceTime = 0;
 unsigned long lastDebounceTime2 = 0;
 unsigned long debounceDelay = 30;
-
 
 DHT dht(DHTPIN, DHTTYPE);
 WiFiClientSecure wifiClient;
@@ -166,8 +181,8 @@ void set_new_temp(float temp) {
   //float new_temp = (temp * 2) - 10;
   float new_temp = (temp * 4) - 18;
   pulse("+", 100);
-  delay(100);
-  pulse("-", 2); // Change direction
+  //delay(100);
+  //pulse("-", 2); // Change direction
   delay(10);
   pulse("-", new_temp);
 }
@@ -212,10 +227,6 @@ void buttonUp() {
 
 void buttonDown() {
   Serial.println(F("pulse -1"));
-  //digitalWrite(LED, HIGH);
-  //delay(100);
-  //digitalWrite(LED, LOW);
-  //delay(100);
   pulse("-", 2);
 }
 
@@ -247,11 +258,24 @@ void processButton(int buttonId, int* currentState, int* lastState, unsigned lon
 void readAndSetTemp() {
   connect();
 
-  int tmp = getTemperature();
-  Serial.print(F("Setting temperature to: "));
-  Serial.println(tmp);
+  int newTemperature = getTemperature();
 
-  set_new_temp((float)tmp);
+  if (rtcStore.lastKnownTemp == newTemperature) {
+    Serial.println(F("Target temperature hasn't changed. Skipping."));
+  } else {
+    Serial.print(F("Setting temperature to: "));
+    Serial.println(newTemperature);
+
+    set_new_temp((float)newTemperature);
+    
+    rtcStore.lastKnownTemp = newTemperature;
+    
+    if (system_rtc_mem_write(100, &rtcStore, sizeof(rtcStore))) {
+      Serial.println("rtc mem write is ok during temp persist");
+    } else {
+      Serial.println("rtc mem write is fail during temp persist");
+    }
+  }
   
 /*
   float heat = getHeatIndex();
@@ -261,8 +285,7 @@ void readAndSetTemp() {
   reportTemperature(heat);
 */
 
-  Serial.println("Going into deep sleep for 10 seconds");
-  ESP.deepSleep(10e6); // 10e6 is 20 microseconds
+
 }
 
 void setup() {
@@ -289,16 +312,35 @@ void setup() {
   pinMode(ROT2, OUTPUT);
   digitalWrite(ROT1, LOW);
   digitalWrite(ROT2, LOW);
+
+  system_rtc_mem_read(100, &rtcStore, sizeof(rtcStore));
+  if (rtcStore.magic != RTC_MAGIC) {
+    Serial.println("Initialising RTC memory");
+    rtcStore.magic = RTC_MAGIC;
+    rtcStore.lastKnownTemp = 0;
+
+    if (system_rtc_mem_write(100, &rtcStore, sizeof(rtcStore))) {
+      Serial.println("rtc mem write is ok during init");
+    } else {
+      Serial.println("rtc mem write is fail during init");
+    }
+  }
 }
 
 void loop() {
   //processButton(BUTTON_GO, &buttonStateGo, &lastButtonStateGo, &lastDebounceTimeGo, buttonGo);
   int initPhase = digitalRead(BUTTON_GO);
   if (initPhase == HIGH) {
+    
     Serial.println(F("Auto mode"));
     digitalWrite(INIT_LED, HIGH);
     readAndSetTemp();
+
+    Serial.println("Going into deep sleep for 10 seconds");
+    ESP.deepSleep(10e6); // 10e6 is 20 microseconds
+    
   } else { // OFF -> Manual mode to setup HT
+    
     Serial.println(F("Manual mode"));
     digitalWrite(INIT_LED, LOW);
     processButton(BUTTON, &buttonState, &lastButtonState, &lastDebounceTime, buttonUp);
