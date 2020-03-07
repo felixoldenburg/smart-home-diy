@@ -172,14 +172,14 @@ void pulse(char dir[], float qty_pulses) {
     }
     if (dir == "-") {
       digitalWrite(ROT1, pinStatus);
-      delay(20);
+      delay(10);
       digitalWrite(ROT2, pinStatus);
-      delay(20);
+      delay(10);
     } else if (dir == "+") {
       digitalWrite(ROT2, pinStatus);
-      delay(20);
+      delay(10);
       digitalWrite(ROT1, pinStatus);
-      delay(20);
+      delay(10);
     }
   }
 }
@@ -189,10 +189,6 @@ void buttonGo() {
   digitalWrite(INIT_LED, HIGH);
 
   readAndSetTemp();
-  //delay(100);
-  //digitalWrite(LED, LOW);
-  //delay(100);
-  //pulse("+", 2);
 }
 
 void buttonUp() {
