@@ -39,15 +39,30 @@ It all started with ...
 Short Form | Meaning
 ---|---
 HT | Heater Thermostat
-BrainPi | RaspberryPi acting with gateway software
+BrainPi | RaspberryPi acting as gateway software
+ES | ElasticSearch
 
-* RaspberryPi: Checkout and use github repo for webserver instead of local file
-* Add rotary_encoder_pulsing functionality to *huzzah_buttons_rotaryencoder*
-* Merge *huzzah_buttons_rotaryencoder* with **wifi_controller**
-* Test sending pulses via buttons to HT
+1. Reporting v1
+1.1 BrainPi New endpoint: POST /heaterthermostat/<id>?temp=<value>&humidity=<value>
+1.2 Refactor: BrainPi should report temperature instead of HT
+1.3 Add basic auth to InfluxDB connection
+1.4 Write outside temperature to InfluxDB from third party source (look for public API)
+1.4.1 Research public and free API to get temperature for city/region
+1.4.2 Python script as cronjob to write the outside temperature to InfluxDB 
+1.5 Grafana Dashboard: Add humidity and outside temperature
+
+##### Monitoring
+###### Health checks
+HT and BrainPi should both have health indicators showing if they work as expected and are up and running
+###### Grafana Dashboard
+Plot temperature, humidity and healthiness
+###### Logging
+Send logs from HT and BrainPi to an ElasticSearch instance (running on the BrainPi?)
 
 ### Error Handling
-* Indicate with red lamp if there was any error (later health check functionality)
+* A flashing FATAL lamp to indicate a severe error/exception like not having a Wifi connection
+* Other errors are logged to ES
+Indicate with red lamp if there was any error (later health check functionality)
 * Remember errors and send to BrainPi which stores error messages in text file
   * Later send BrainPi logs from webserver and HT errors to ES on Scaleway instance
 
