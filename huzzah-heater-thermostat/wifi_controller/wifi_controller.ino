@@ -24,6 +24,7 @@ extern "C" {
 
 /**
  * ToDo
+ * x Bug: When going into sleep mode it steps half a degree down (Go half a degree up, so it's correct at the end
  * - Modularise -> SOC
  * - Report temperature
  * - Persist and report number of restarts (This can help as an indicator how long/stable the device runs -> Report)
@@ -151,10 +152,10 @@ int retrieveTemperature() {
   Serial.println(url);
   
   http.begin(url);
+  
   int returnCode = http.GET();
-
   if (returnCode != 200) {
-    handleError(ERR_GET_TEMP, "Couldnt read temperature");
+    handleError(ERR_GET_TEMP, "Couldnt read temperature. Return code: " + String(returnCode));
     return -1;
   }
 
@@ -180,15 +181,15 @@ float getHeatIndex() {
   return dht.computeHeatIndex(t, h, false);
 }
 
-// TODO Change to to int temp, the precision isn't necessary
+// TODO Change to int temp, the precision isn't necessary
 void set_new_temp(float temp) {
-  // TODO Test with (temp * 4) - 20 and extract to impulseFunction
-  // Because that would mean 2xImpuls == half a degree, so 1 degree are 4 impulses. Minus 5 (20 impulses) degree for the minimum temp of the HT
-  float new_temp = (temp * 4) - 18;
+  // 2xImpulses == half a degree, so 1 degree are 4 impulses. Minus 5 (20 impulses) degree for the minimum temp of the HT
+  float new_temp = (temp * 4) - 20;
 
   // TODO + and - are mixed up
   pulse("+", 100);
   delay(10);
+  pulse("-", 2); // Changing direction
   pulse("-", new_temp);
 }
 
@@ -203,14 +204,14 @@ void pulse(char dir[], float qty_pulses) {
     }
     if (dir == "-") {
       digitalWrite(ROT1, pinStatus);
-      delay(10);
+      delay(20);
       digitalWrite(ROT2, pinStatus);
-      delay(10);
+      delay(20);
     } else if (dir == "+") {
       digitalWrite(ROT2, pinStatus);
-      delay(10);
+      delay(20);
       digitalWrite(ROT1, pinStatus);
-      delay(10);
+      delay(20);
     }
   }
 }
@@ -258,8 +259,18 @@ void readAndSetTemp() {
   
   int newTemperature = retrieveTemperature();
 
+  if (newTemperature == -1) {// -1 would indicate an error
+    Serial.println(F("Skipping setting of temperature!"));
+    return;
+  }
+
   if (rtcStore.lastKnownTemp == newTemperature) {
     Serial.println(F("Target temperature hasn't changed. Skipping."));
+    
+    // When going to deep sleep power on the rotary encoder pin changes, resulting in an unwanted pulse
+    // This steers in the other direction to prevent the temperature from being changed
+    pulse("-", 1);
+    
   } else {
     Serial.print(F("Setting temperature to: "));
     Serial.println(newTemperature);
@@ -339,6 +350,7 @@ void loop() {
     Serial.println(F("ZZZZzzzzzzz...."));
     Serial.println("");
     Serial.println("");
+
     // TODO Move magic number
     ESP.deepSleep(10e6); // 10e6 is 20 microseconds
     
