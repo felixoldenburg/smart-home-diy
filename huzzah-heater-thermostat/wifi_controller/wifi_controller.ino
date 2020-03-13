@@ -9,6 +9,9 @@ extern "C" {
   #include "user_interface.h"
 }
 
+// Default/Backup temperature value
+const int DEFAULT_TEMPERATURE = 18;
+
 // Temp. sensor
 #define DHTPIN 4
 #define DHTTYPE DHT22
@@ -24,6 +27,7 @@ extern "C" {
 
 /**
  * ToDo
+ * - Write multiple metrics at once: https://docs.influxdata.com/influxdb/v1.7/guides/writing_data/#writing-multiple-points or rather seperate http calls?
  * x Bug: When going into sleep mode it steps half a degree down (Go half a degree up, so it's correct at the end
  * - Modularise -> SOC
  * - Report temperature
@@ -49,6 +53,7 @@ extern "C" {
 typedef struct {
   uint32_t magic;
   uint8_t  lastKnownTemp;
+  uint8_t  restartCounter;
   //uint8_t  wlanConnectFailCnt;
   //float    tempAccu;
   //float    humiAccu;
@@ -132,10 +137,35 @@ void reportTemperature(float tmp) {
   // TODO Put ip+port and DB into localconstants.h
   http.begin("http://51.15.123.89:8086/write?db=mydb");
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-  http.POST(payload);
+  int returnCode = http.POST(payload);
 
   // Print the response
-  Serial.println(F("Http response:"));
+  Serial.print(F("Return code: "));
+  Serial.print(returnCode);
+  Serial.println(F(" Http response:"));
+  Serial.println(http.getString());
+
+  // Disconnect
+  http.end();
+}
+
+void ping() {
+
+  // Can a globally shared HttpClient be reused?
+  HTTPClient http;
+
+  // Send request
+  String payload="restart_counter,id=1,name=living_room value=";
+  payload += String(rtcStore.restartCounter);
+  // TODO Put ip+port and DB into localconstants.h
+  http.begin("http://51.15.123.89:8086/write?db=mydb");
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  int returnCode = http.POST(payload);
+
+  // Print the response
+  Serial.print(F("Return code: "));
+  Serial.print(returnCode);
+  Serial.println(F(" Http response:"));
   Serial.println(http.getString());
 
   // Disconnect
@@ -265,7 +295,9 @@ void readAndSetTemp() {
   }
 
   if (rtcStore.lastKnownTemp == newTemperature) {
-    Serial.println(F("Target temperature hasn't changed. Skipping."));
+    Serial.print(F("Target temperature ("));
+    Serial.print(newTemperature);
+    Serial.println(F(") hasn't changed. Skipping."));
     
     // When going to deep sleep power on the rotary encoder pin changes, resulting in an unwanted pulse
     // This steers in the other direction to prevent the temperature from being changed
@@ -317,12 +349,15 @@ void setup() {
     Serial.println("Initialising RTC memory");
     rtcStore.magic = RTC_INIT_CODE;
     rtcStore.lastKnownTemp = 0;
+    rtcStore.restartCounter = 0;
 
     if (system_rtc_mem_write(100, &rtcStore, sizeof(rtcStore))) {
       Serial.println("rtc mem write is ok during init");
     } else {
       Serial.println("rtc mem write is fail during init");
     }
+  } else {
+    ++rtcStore.restartCounter;
   }
 }
 
@@ -336,15 +371,16 @@ void loop() {
 
     connectWifi();
 
-/* Report heat to InfluxDB
-  float heat = getHeatIndex();
-  Serial.print(F("Heat index: "));
-  Serial.println(heat);
+    // Report heat index to InfluxDB
+    float heat = getHeatIndex();
+    Serial.print(F("Heat index: "));
+    Serial.println(heat);
 
-  reportTemperature(heat);
-*/
+    reportTemperature(heat);
     
     readAndSetTemp();
+
+    ping();
 
     Serial.println(F("Going into deep sleep for 10 seconds"));
     Serial.println(F("ZZZZzzzzzzz...."));
