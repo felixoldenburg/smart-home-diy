@@ -24,7 +24,7 @@ Custom tailored smart home components with a focus on learning electronics and s
 * Control lights and heating
 * Safe money
 * Automatise repetitve day to day tasks
-* Avoid third party cloud provider and limit/avoid internet exposure
+* Avoid third party butt provider and limit/avoid internet exposure
 * Reuse old/unused components
 
 Just picking up an old box with electronic components got me started refreshing knowledge about transistors, µControllers, etc.
@@ -42,6 +42,14 @@ BrainPi | RaspberryPi acting as gateway software
 ES | ElasticSearch
 
 ## Next Steps
+
+#### New / Unsorted
+- Install new cable + plug for easier mounting and demounting between test runs
+- Bug: The controller seems to crash regularly, as the restartCounter seems to be reset (starting from 0 again) all the time.  
+  Try to enable all DEBUG logs. Check in monitor first or check how to persist the logs.
+- Bug: Automatic thermostat (actual unit, not the controller) overrides temperature. HT doesn't recognise and keeps wrong temperature
+- Analyse BrainPi logs from first test run
+- Log system: ES on scaleway instance and BrainPi report to it
 
 #### Reporting v1
 1. BrainPi New endpoint: POST /heaterthermostat/<id>?temp=<value>&humidity=<value>
